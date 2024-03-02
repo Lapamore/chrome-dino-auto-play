@@ -21,8 +21,9 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
 logging.getLogger().addHandler(stream_handler)
 
-config = GameConfig()
 
+# Creating a configuration class object
+config = GameConfig()
 
 barrier = threading.Barrier(2)
 is_grab_running = Event()
@@ -30,12 +31,14 @@ is_image_processing_running = True
 q = Queue(maxsize=config.QUEUE_SIZE)
 
 
-def stop_program():
+# The function of stopping the action of the program
+def shutdown():
     global is_grab_running, is_image_processing_running
     is_grab_running.set()
     is_image_processing_running = False
 
 
+# The main function of image processing
 def image_processing(queue):
     global is_image_processing_running
     barrier.wait()
@@ -182,6 +185,7 @@ def image_processing(queue):
     cv2.destroyAllWindows()
 
 
+# Image capture and queuing transfer function
 def grab(queue):
     global is_grab_running
     barrier.wait()
@@ -197,10 +201,11 @@ def grab(queue):
             img = sct.grab(monitor)
             img = np.array(img)
             img = img[:, :, :3]
-            screenshot = cv2.resize(img, (576, 324))
+            screenshot = cv2.resize(img, (config.RESIZE_WIDTH, config.RESIZE_HEIGHT))
             queue.put(screenshot)
 
 
+# Starting the main processes
 if __name__ == "__main__":
     logging.info("Запуск основной программы")
 
@@ -210,7 +215,7 @@ if __name__ == "__main__":
     t1.start()
     t2.start()
 
-    keyboard.add_hotkey("q", stop_program)
+    keyboard.add_hotkey("q", shutdown)
 
     t1.join()
     t2.join()

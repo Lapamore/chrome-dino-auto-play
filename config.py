@@ -13,6 +13,8 @@ class GameConfig:
         JUMP_DISTANCE_MAX (int): Максимальное расстояние для прыжка динозавра.
         MIN_JUMP_DISTANCE (int): Минимальное расстояние для прыжка динозавра.
         FRAME_THRESHOLD (int): Пороговое значение кадров в секунду для определения старта программы.
+        RESIZE_WIDTH (int): Ширина, на которую будет изменено входящее изображение.
+        RESIZE_HEIGHT (int): Высота, на которую будет изменено входящее изображение.
         START_TIME (float): Время старта программы.
         START_FLAG (bool): Флаг, указывающий на начало программы.
         PATH_TO_MODEL (str): Путь к файлу модели для распознавания объектов.
@@ -24,6 +26,8 @@ class GameConfig:
     JUMP_DISTANCE_MAX = 85
     MIN_JUMP_DISTANCE = 30
     FRAME_THRESHOLD = 28
+    RESIZE_WIDTH = 576
+    RESIZE_HEIGHT = 324
     START_TIME = time()
     START_FLAG = False
     PATH_TO_MODEL = "darknet/best_nano.pt"
