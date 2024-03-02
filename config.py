@@ -9,6 +9,7 @@ class GameConfig:
 
     Attributes:
         QUEUE_SIZE (int): Максимальный размер очереди для обработанных изображений.
+        CONFIDENCE_THRESHOLD (float): Минимальное значение уверенности, которое объект должен иметь, чтобы быть успешно обнаруженным моделью.
         JUMP_DISTANCE_MAX (int): Максимальное расстояние для прыжка динозавра.
         MIN_JUMP_DISTANCE (int): Минимальное расстояние для прыжка динозавра.
         FRAME_THRESHOLD (int): Пороговое значение кадров в секунду для определения старта программы.
@@ -19,6 +20,7 @@ class GameConfig:
         model (Model): Экземпляр класса Model для загрузки и использования модели YOLO.
     """
     QUEUE_SIZE = 10
+    CONFIDENCE_THRESHOLD = 0.8
     JUMP_DISTANCE_MAX = 85
     MIN_JUMP_DISTANCE = 30
     FRAME_THRESHOLD = 28

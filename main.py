@@ -78,7 +78,7 @@ def image_processing(queue):
             for detection in result:
                 detection = detection.cpu()
                 boxes = detection.boxes
-                idx = np.where(np.array(boxes.conf) > 0.8)
+                idx = np.where(np.array(boxes.conf) > config.CONFIDENCE_THRESHOLD)
                 coordinates = np.array(boxes.xyxy[idx])
 
                 for k in coordinates:
