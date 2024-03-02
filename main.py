@@ -20,41 +20,46 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
 logging.getLogger().addHandler(stream_handler)
 
-queue_size = 10
-q = Queue(maxsize=queue_size)
-kb = KeyboardController()
-model = Model("darknet/best_nano.pt").load_model()
-barrier = threading.Barrier(2)
-grab_running = Event()
-image_processing_running = True
+QUEUE_SIZE  = 10
+JUMP_DISTANCE_MAX = 85
+MIN_JUMP_DISTANCE = 30
+FRAME_THRESHOLD = 28
+START_TIME = time()
+START_FLAG = False
+PATH_TO_MODEL = "darknet/best_nano.pt"
 
+q = Queue(maxsize=QUEUE_SIZE)
+kb = KeyboardController()
+model = Model(PATH_TO_MODEL).load_model()
+barrier = threading.Barrier(2)
+is_grab_running  = Event()
+is_image_processing_running  = True
 
 
 def stop_program():
-    global grab_running, image_processing_running
-    grab_running.set()
-    image_processing_running = False
+    global is_grab_running , is_image_processing_running 
+    is_grab_running .set()
+    is_image_processing_running  = False
 
 
 def image_processing(queue):
-    global image_processing_running
+    global is_image_processing_running 
     barrier.wait()
 
     loop_time = time()
     last_jump_time = time()
-    start_time = time()
-    jump_distance_max = 85
-    min_distance_max = 30
-    start_flag = False
+    
+    jump_distance_max = JUMP_DISTANCE_MAX
+    min_jump_distance = MIN_JUMP_DISTANCE
 
-    while image_processing_running:
+    while is_image_processing_running :
         # Start proggram!
         if (
             (time() - loop_time) != 0
-            and (round(1 / (time() - loop_time)) > 28)
-            and (not start_flag)
+            and (round(1 / (time() - loop_time)) > FRAME_THRESHOLD)
+            and (not START_FLAG)
         ):
-            start_flag = True
+            START_FLAG = True
             continue
 
         else:
@@ -69,52 +74,51 @@ def image_processing(queue):
             if (
                 elapsed_time_since_jump >= 16
                 and jump_distance_max <= 230
-                and min_distance_max <= 50
+                and min_jump_distance  <= 50
             ):
                 jump_distance_max += 10
-                min_distance_max += 2
+                min_jump_distance  += 2
                 last_jump_time = time()
 
             for detection in result:
                 detection = detection.cpu()
                 boxes = detection.boxes
                 idx = np.where(np.array(boxes.conf) > 0.8)
-                xyxy = np.array(boxes.xyxy[idx])
+                coordinates = np.array(boxes.coordinates[idx])
 
-                for k in xyxy:
+                for k in coordinates:
                     x, y, x2, y2 = k
                     cv2.rectangle(
                         screenshot, (int(x), int(y)), (int(x2), int(y2)), (0, 255, 0), 2
                     )
 
-                if len(xyxy) >= 2:
-                    flag = False
-                    xyxy_ = xyxy.copy()
+                if len(coordinates) >= 2:
+                    is_crouch_performed  = False
+                    update_coordinates = coordinates.copy()
                     cls_ = np.array(boxes.cls)
                     if (0 in cls_) and (np.count_nonzero(cls_ == 0) == 1):
                         try:
                             dino_index = np.where(cls_ == 0)[0].item()
-                            dino_x, dino_y = int(xyxy[dino_index][2]), int(
-                                xyxy[dino_index][1]
+                            dino_x, dino_y = int(coordinates[dino_index][2]), int(
+                                coordinates[dino_index][1]
                             )
                         except Exception:
-                            print("Индекс динозавра не может быть определен!")
+                            #print("Индекс динозавра не может быть определен!")
                             continue
 
-                        xyxy_ = np.delete(xyxy_, dino_index, axis=0)
+                        update_coordinates = np.delete(update_coordinates, dino_index, axis=0)
                         cls_ = np.delete(cls_, dino_index, axis=0)
 
-                        recognized_object_x = int(min(xyxy_[:, 0]))
-                        min_index = np.argmin(xyxy_[:, 0])
-                        recognized_object_y = int(xyxy_[min_index, 1])
-                        recognized_object_y_2 = int(xyxy_[min_index, 3])
+                        recognized_object_x = int(min(update_coordinates[:, 0]))
+                        min_index = np.argmin(update_coordinates[:, 0])
+                        recognized_object_y = int(update_coordinates[min_index, 1])
+                        recognized_object_y_2 = int(update_coordinates[min_index, 3])
 
                         if dino_y >= 174:
-                            # logging.info(f"{recognized_object_x} - {dino_x} = {recognized_object_x - dino_x}")
                             if 2 in cls_:
                                 try:
                                     bird_index = np.where(cls_ == 2)[0].item()
-                                    bird = xyxy_[bird_index]
+                                    bird = update_coordinates[bird_index]
                                     bird_y_min, bird_y = int(bird[1]), int(bird[3])
                                     if (
                                         int(bird[0]) == recognized_object_x
@@ -125,25 +129,20 @@ def image_processing(queue):
                                         ):
                                             if (recognized_object_x - dino_x) < 150:
                                                 kb.crouch(0.4)
-                                                flag = True
-                                                logging.info(
-                                                    "Динозавр спустился при виде птицы"
-                                                )
+                                                is_crouch_performed  = True
                                 except:
                                     continue
 
-                            if abs(dino_y - recognized_object_y_2) > 7 and not flag:
+                            if abs(dino_y - recognized_object_y_2) > 7 and not is_crouch_performed :
                                 distance = recognized_object_x - dino_x
                                 if (
                                     distance < jump_distance_max
-                                    and distance >= min_distance_max
+                                    and distance >= min_jump_distance 
                                 ):
-                                    if time() - start_time <= 50:
+                                    if time() - START_TIME <= 55:
                                         kb.jump()
                                     else:
                                         kb.jump_and_crouch()
-
-                                    logging.info("Динозавр совершил прыжок")
 
                                 cv2.line(
                                     screenshot,
@@ -184,14 +183,14 @@ def image_processing(queue):
 
 
 def grab(queue):
-    global grab_running
+    global is_grab_running 
     barrier.wait()
 
     w, h = pyautogui.size()
     monitor = {"top": 0, "left": 0, "width": w, "height": h}
 
     with mss.mss() as sct:
-        while not grab_running.is_set():
+        while not is_grab_running .is_set():
             if queue.full():
                 continue
 
