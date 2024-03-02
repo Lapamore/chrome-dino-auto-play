@@ -4,13 +4,14 @@ import keyboard
 import mss
 import mss.tools
 from time import time
-from keyboard_control import KeyboardController
 import numpy as np
 import logging
 import threading
+from config import GameConfig
 from threading import Event
+import threading
 from multiprocessing import Queue
-from model import Model
+
 
 logging.getLogger().setLevel(logging.INFO)
 formatter = logging.Formatter(
@@ -20,46 +21,40 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
 logging.getLogger().addHandler(stream_handler)
 
-QUEUE_SIZE  = 10
-JUMP_DISTANCE_MAX = 85
-MIN_JUMP_DISTANCE = 30
-FRAME_THRESHOLD = 28
-START_TIME = time()
-START_FLAG = False
-PATH_TO_MODEL = "darknet/best_nano.pt"
+config = GameConfig()
 
-q = Queue(maxsize=QUEUE_SIZE)
-kb = KeyboardController()
-model = Model(PATH_TO_MODEL).load_model()
+
 barrier = threading.Barrier(2)
-is_grab_running  = Event()
-is_image_processing_running  = True
+is_grab_running = Event()
+is_image_processing_running = True
+q = Queue(maxsize=config.QUEUE_SIZE)
 
 
 def stop_program():
-    global is_grab_running , is_image_processing_running 
-    is_grab_running .set()
-    is_image_processing_running  = False
+    global is_grab_running, is_image_processing_running
+    is_grab_running.set()
+    is_image_processing_running = False
 
 
 def image_processing(queue):
-    global is_image_processing_running 
+    global is_image_processing_running
     barrier.wait()
 
     loop_time = time()
     last_jump_time = time()
-    
-    jump_distance_max = JUMP_DISTANCE_MAX
-    min_jump_distance = MIN_JUMP_DISTANCE
 
-    while is_image_processing_running :
+    jump_distance_max = config.JUMP_DISTANCE_MAX
+    min_jump_distance = config.MIN_JUMP_DISTANCE
+    start_flag = config.START_FLAG
+
+    while is_image_processing_running:
         # Start proggram!
         if (
             (time() - loop_time) != 0
-            and (round(1 / (time() - loop_time)) > FRAME_THRESHOLD)
-            and (not START_FLAG)
+            and (round(1 / (time() - loop_time)) > config.FRAME_THRESHOLD)
+            and (not start_flag)
         ):
-            START_FLAG = True
+            start_flag = True
             continue
 
         else:
@@ -67,24 +62,24 @@ def image_processing(queue):
                 continue
 
             screenshot = queue.get()
-            result = model(screenshot, verbose=False)
+            result = config.model(screenshot, verbose=False)
 
             elapsed_time_since_jump = time() - last_jump_time
 
             if (
                 elapsed_time_since_jump >= 16
                 and jump_distance_max <= 230
-                and min_jump_distance  <= 50
+                and min_jump_distance <= 50
             ):
                 jump_distance_max += 10
-                min_jump_distance  += 2
+                min_jump_distance += 2
                 last_jump_time = time()
 
             for detection in result:
                 detection = detection.cpu()
                 boxes = detection.boxes
                 idx = np.where(np.array(boxes.conf) > 0.8)
-                coordinates = np.array(boxes.coordinates[idx])
+                coordinates = np.array(boxes.xyxy[idx])
 
                 for k in coordinates:
                     x, y, x2, y2 = k
@@ -93,7 +88,7 @@ def image_processing(queue):
                     )
 
                 if len(coordinates) >= 2:
-                    is_crouch_performed  = False
+                    is_crouch_performed = False
                     update_coordinates = coordinates.copy()
                     cls_ = np.array(boxes.cls)
                     if (0 in cls_) and (np.count_nonzero(cls_ == 0) == 1):
@@ -103,10 +98,12 @@ def image_processing(queue):
                                 coordinates[dino_index][1]
                             )
                         except Exception:
-                            #print("Индекс динозавра не может быть определен!")
+                            # print("Индекс динозавра не может быть определен!")
                             continue
 
-                        update_coordinates = np.delete(update_coordinates, dino_index, axis=0)
+                        update_coordinates = np.delete(
+                            update_coordinates, dino_index, axis=0
+                        )
                         cls_ = np.delete(cls_, dino_index, axis=0)
 
                         recognized_object_x = int(min(update_coordinates[:, 0]))
@@ -128,21 +125,24 @@ def image_processing(queue):
                                             bird_y_min, bird_y + 1
                                         ):
                                             if (recognized_object_x - dino_x) < 150:
-                                                kb.crouch(0.4)
-                                                is_crouch_performed  = True
+                                                config.kb.crouch()
+                                                is_crouch_performed = True
                                 except:
                                     continue
 
-                            if abs(dino_y - recognized_object_y_2) > 7 and not is_crouch_performed :
+                            if (
+                                abs(dino_y - recognized_object_y_2) > 7
+                                and not is_crouch_performed
+                            ):
                                 distance = recognized_object_x - dino_x
                                 if (
                                     distance < jump_distance_max
-                                    and distance >= min_jump_distance 
+                                    and distance >= min_jump_distance
                                 ):
-                                    if time() - START_TIME <= 55:
-                                        kb.jump()
+                                    if time() - config.START_TIME <= 55:
+                                        config.kb.jump()
                                     else:
-                                        kb.jump_and_crouch()
+                                        config.kb.jump_and_crouch()
 
                                 cv2.line(
                                     screenshot,
@@ -183,14 +183,14 @@ def image_processing(queue):
 
 
 def grab(queue):
-    global is_grab_running 
+    global is_grab_running
     barrier.wait()
 
     w, h = pyautogui.size()
     monitor = {"top": 0, "left": 0, "width": w, "height": h}
 
     with mss.mss() as sct:
-        while not is_grab_running .is_set():
+        while not is_grab_running.is_set():
             if queue.full():
                 continue
 
