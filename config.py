@@ -1,4 +1,4 @@
-from keyboard_control import KeyboardController
+
 from model import Model
 from time import time
 
@@ -18,7 +18,6 @@ class GameConfig:
         START_TIME (float): Время старта программы.
         START_FLAG (bool): Флаг, указывающий на начало программы.
         PATH_TO_MODEL (str): Путь к файлу модели для распознавания объектов.
-        kb (KeyboardController): Экземпляр класса KeyboardController для управления клавиатурой.
         model (Model): Экземпляр класса Model для загрузки и использования модели YOLO.
     """
     QUEUE_SIZE = 10
@@ -32,5 +31,4 @@ class GameConfig:
     START_FLAG = False
     PATH_TO_MODEL = "darknet/best_nano.pt"
 
-    kb = KeyboardController()
     model = Model(PATH_TO_MODEL).load_model()

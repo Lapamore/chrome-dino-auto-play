@@ -11,7 +11,7 @@ from config import GameConfig
 from threading import Event
 import threading
 from multiprocessing import Queue
-
+from keyboard_control import KeyboardController
 
 logging.getLogger().setLevel(logging.INFO)
 formatter = logging.Formatter(
@@ -22,8 +22,10 @@ stream_handler.setFormatter(formatter)
 logging.getLogger().addHandler(stream_handler)
 
 
-# Creating a configuration class object
+# Создание объекта класса конфигурации
 config = GameConfig()
+# Экземпляр класса KeyboardController для управления клавиатурой.
+kb = KeyboardController()
 
 barrier = threading.Barrier(2)
 is_grab_running = Event()
@@ -31,14 +33,14 @@ is_image_processing_running = True
 q = Queue(maxsize=config.QUEUE_SIZE)
 
 
-# The function of stopping the action of the program
+# Функция остановки действия программы
 def shutdown():
     global is_grab_running, is_image_processing_running
     is_grab_running.set()
     is_image_processing_running = False
 
 
-# The main function of image processing
+# Основная функция обработки изображений
 def image_processing(queue):
     global is_image_processing_running
     barrier.wait()
@@ -51,7 +53,6 @@ def image_processing(queue):
     start_flag = config.START_FLAG
 
     while is_image_processing_running:
-        # Start proggram!
         if (
             (time() - loop_time) != 0
             and (round(1 / (time() - loop_time)) > config.FRAME_THRESHOLD)
@@ -128,7 +129,7 @@ def image_processing(queue):
                                             bird_y_min, bird_y + 1
                                         ):
                                             if (recognized_object_x - dino_x) < 150:
-                                                config.kb.crouch()
+                                                kb.crouch()
                                                 is_crouch_performed = True
                                 except:
                                     continue
@@ -143,9 +144,9 @@ def image_processing(queue):
                                     and distance >= min_jump_distance
                                 ):
                                     if time() - config.START_TIME <= 55:
-                                        config.kb.jump()
+                                        kb.jump()
                                     else:
-                                        config.kb.jump_and_crouch()
+                                        kb.jump_and_crouch()
 
                                 cv2.line(
                                     screenshot,
@@ -185,7 +186,7 @@ def image_processing(queue):
     cv2.destroyAllWindows()
 
 
-# Image capture and queuing transfer function
+# Функция захвата изображений и передачи в очередь
 def grab(queue):
     global is_grab_running
     barrier.wait()
@@ -205,7 +206,7 @@ def grab(queue):
             queue.put(screenshot)
 
 
-# Starting the main processes
+# Запуск основных процессов
 if __name__ == "__main__":
     logging.info("Запуск основной программы")
 
