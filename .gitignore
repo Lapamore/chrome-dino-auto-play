@@ -1,0 +1,12 @@
+# Игнорировать все файлы с расширением 
+*.png
+
+# Игнорировать папку "build"
+dataset/
+.ipynb_checkpoints/
+old/
+runs/
+__pycache__/
+
+# Игнорировать файл "config.ini"
+Temp file.ipynb
