@@ -29,6 +29,6 @@ class GameConfig:
     RESIZE_HEIGHT = 324
     START_TIME = time()
     START_FLAG = False
-    PATH_TO_MODEL = "darknet/best_nano.pt"
+    PATH_TO_MODEL = "yolov8_model/best_nano.pt"
 
     model = Model(PATH_TO_MODEL).load_model()
