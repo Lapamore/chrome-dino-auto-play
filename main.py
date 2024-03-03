@@ -12,15 +12,10 @@ from threading import Event
 import threading
 from multiprocessing import Queue
 from keyboard_control import KeyboardController
+from log_config import setup_logging
 
-logging.getLogger().setLevel(logging.INFO)
-formatter = logging.Formatter(
-    "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-)
-stream_handler = logging.StreamHandler()
-stream_handler.setFormatter(formatter)
-logging.getLogger().addHandler(stream_handler)
-
+# Логирование
+setup_logging()
 
 # Создание объекта класса конфигурации
 config = GameConfig()
@@ -28,9 +23,10 @@ config = GameConfig()
 kb = KeyboardController()
 
 barrier = threading.Barrier(2)
+q = Queue(maxsize=config.QUEUE_SIZE)
+
 is_grab_running = Event()
 is_image_processing_running = True
-q = Queue(maxsize=config.QUEUE_SIZE)
 
 
 # Функция остановки действия программы
@@ -59,6 +55,7 @@ def image_processing(queue):
             and (not start_flag)
         ):
             start_flag = True
+            logging.info("Программа работает, можете начинать игру!")
             continue
 
         else:
@@ -67,11 +64,10 @@ def image_processing(queue):
 
             screenshot = queue.get()
             result = config.model(screenshot, verbose=False)
-
             elapsed_time_since_jump = time() - last_jump_time
 
             if (
-                elapsed_time_since_jump >= 16
+                elapsed_time_since_jump >= 15
                 and jump_distance_max <= 230
                 and min_jump_distance <= 50
             ):
@@ -155,16 +151,6 @@ def image_processing(queue):
                                     (0, 0, 255),
                                     3,
                                 )
-
-                            cv2.putText(
-                                screenshot,
-                                str(recognized_object_x - dino_x),
-                                (200, 100),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                1,
-                                (0, 255, 0),
-                                2,
-                            )
 
         cv2.putText(
             screenshot,
