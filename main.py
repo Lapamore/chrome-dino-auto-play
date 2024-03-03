@@ -143,26 +143,7 @@ def image_processing(queue):
                                         kb.jump()
                                     else:
                                         kb.jump_and_crouch()
-
-                                cv2.line(
-                                    screenshot,
-                                    (dino_x, dino_y),
-                                    (recognized_object_x, dino_y),
-                                    (0, 0, 255),
-                                    3,
-                                )
-
-        cv2.putText(
-            screenshot,
-            str(round(1 / (time() - loop_time))),
-            (20, 40),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (0, 255, 0),
-            2,
-        )
-
-        cv2.imshow("CV", screenshot)
+                                        
         loop_time = time()
 
         key = cv2.waitKey(1)
