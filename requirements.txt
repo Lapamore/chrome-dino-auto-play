@@ -1,0 +1,8 @@
+opencv-python
+pyautogui
+mss
+numpy
+logging
+threading
+keyboard
+ultralytics

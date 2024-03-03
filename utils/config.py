@@ -1,5 +1,5 @@
 
-from model import Model
+from utils.model import Model
 from time import time
 
 

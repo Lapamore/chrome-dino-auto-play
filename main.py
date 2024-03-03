@@ -7,12 +7,12 @@ from time import time
 import numpy as np
 import logging
 import threading
-from config import GameConfig
+from utils.config import GameConfig
 from threading import Event
 import threading
 from multiprocessing import Queue
-from keyboard_control import KeyboardController
-from log_config import setup_logging
+from utils.keyboard_control import KeyboardController
+from utils.log_config import setup_logging
 
 # Логирование
 setup_logging()
